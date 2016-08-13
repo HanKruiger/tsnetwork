@@ -6,6 +6,8 @@ This repository contains the implementation of a graph layout algorithm that mak
 
 The exploration and evaluation of using this technique for graph layouts was done as my MSc thesis project at Rijksuniversiteit Groningen, which I aim to finish in August 2016.
 
+A large part of an essential module in this implementation is a heavily adjusted version of Paulo Rauber's [thesne](https://github.com/paulorauber/thesne), which is an implementation of dynamic t-SNE.
+
 ## Dependencies
 
 This was developed and tested solely on ArchLinux.
