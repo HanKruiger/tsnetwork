@@ -73,7 +73,7 @@ def get_distance_matrix(g, distance_metric, normalize=True, k=10.0):
 
     # Normalize matrix s.t. sum is 1.
     if normalize:
-        X /= np.sum(X)
+        X /= np.max(X)
 
     print('[distance_matrix] Done!')
 
