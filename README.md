@@ -4,7 +4,7 @@ Graph layouts by t-distributed stochastic neighbour embedding.
 
 This repository contains the implementation of a graph layout algorithm that makes use of the [t-SNE](https://lvdmaaten.github.io/tsne/) dimensionality reduction technique.
 
-The exploration and evaluation of using this technique for graph layouts was done as my MSc thesis project at Rijksuniversiteit Groningen, which I aim to finish in August 2016.
+The exploration and evaluation of using this technique for graph layouts was done as my [MSc thesis](http://irs.ub.rug.nl/dbi/57cd44e1a5b49) project at Rijksuniversiteit Groningen, which I aim to finish in August 2016.
 
 A large part of an essential module in this implementation is a heavily adjusted version of Paulo Rauber's [thesne](https://github.com/paulorauber/thesne), which is an implementation of dynamic t-SNE.
 
