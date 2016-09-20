@@ -18,6 +18,8 @@ For this implementation to work, you will need:
 * [`graph-tool`](https://graph-tool.skewed.de/)
 * [`theano`](http://deeplearning.net/software/theano/)
 * [`graphviz`](http://www.graphviz.org/)
+* [`matplotlib`](http://matplotlib.org/)
+* [`scikit-learn`](http://scikit-learn.org/stable/)
 
 For rendering fancy animations (even more heavily untested, probably only works on my system) you need:
 
