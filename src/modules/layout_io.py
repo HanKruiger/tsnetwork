@@ -5,7 +5,7 @@ import matplotlib.cm
 
 
 # Save a drawing of a layout
-def save_drawing(output_folder, g, pos, description, color_property_map=None, color_array=None, formats=None, verbose=True, opacity=0.2):
+def save_drawing(output_folder, g, pos, description, color_property_map=None, color_array=None, formats=None, verbose=True, opacity=0.2, edge_colors=None, draw_vertices=True):
     if formats is None:
         formats = ['jpg', 'pdf']
 
@@ -24,9 +24,10 @@ def save_drawing(output_folder, g, pos, description, color_property_map=None, co
     Y *= scaling
     pos_normalized.set_2d_array(Y)
 
-    # Compute output size based on #vertices (Heuristic based on uniform
-    # density of vertices that seems to work most of the time)
-    out_size = [(g.num_vertices()) ** 0.5] * 2
+    # Output size in cm (matches UF images)
+    out_size = [14.3] * 2
+
+    # Crop for aspect ratio
     if max(Y[0, :]) < max(Y[1, :]):
         out_size[0] *= max(Y[0, :])
     else:
@@ -42,15 +43,43 @@ def save_drawing(output_folder, g, pos, description, color_property_map=None, co
     if verbose:
         print('[layout_io] Saving layout drawing... ({0})'.format(description))
 
-    # Hexadecimal representation of the opacity of the edges
-    opacity_string = hex(int(opacity * 255)).split('x')[1]
+    
+    if edge_colors == "rgb":
+        edge_color = g.new_edge_property('string')
+        edge_length = g.new_edge_property('float')
+        edges = list(g.edges())
+        for e in edges:
+            v1 = e.source()
+            v2 = e.target()
+            length = ((Y[:, int(v1)] - Y[:, int(v2)]) ** 2).sum() ** 0.5
+            edge_length[e] = length
+        lengths = edge_length.get_array()
+        for e in edges:
+            # Colour coding the edges based on edge length
+            x = (edge_length[e] - np.min(lengths)) / (np.max(lengths) - np.min(lengths))
+            red = min(max(0, 1 - 2 * x), 1)
+            green = max(0, 1 - abs(2 * x - 1))
+            blue = min(max(0, -1 + 2 * x), 1)
+            edge_color[e] = "#"
+            edge_color[e] += "{0:0{1}x}".format(int(red * 255), 2)
+            edge_color[e] += "{0:0{1}x}".format(int(green * 255), 2)
+            edge_color[e] += "{0:0{1}x}".format(int(blue * 255), 2)
+            edge_color[e] += "{0:0{1}x}".format(int(opacity * 255), 2)
+    else:
+        edge_color = "#000000{0:0{1}x}".format(int(opacity * 255), 2)
 
     for extension in formats:
         # Use the graphviz interface that graph_tool supplies to save drawings.
-        if color_property_map is None:
-            gt.graphviz_draw(g, fork=True, pos=pos_normalized, pin=True, penwidth=0.5, ecolor='#000000' + opacity_string, vsize=0.1, vcolor='#009900', output=output_folder + '/' + description + '.' + extension, size=(out_size[0], out_size[1]))
+        if not draw_vertices:
+            # For this to work correctly, the gt.graphviz_draw implementation needs some tweaking:
+            #   * Edge attribute headclip: set to "false"
+            #   * Edge attribute tailclip: set to "false"
+            #   * Node attribute shape: set to "none"
+            gt.graphviz_draw(g, fork=True, pos=pos_normalized, pin=True, penwidth=1, ecolor=edge_color, vsize=0, vcolor='#00ff0000', output=output_folder + '/' + description + '.' + extension, size=tuple(out_size))
+        elif color_property_map is None:
+            gt.graphviz_draw(g, fork=True, pos=pos_normalized, pin=True, penwidth=1, ecolor=edge_color, vsize=0.1, vcolor='#009900', output=output_folder + '/' + description + '.' + extension, size=tuple(out_size))
         else:
-            gt.graphviz_draw(g, fork=True, pos=pos_normalized, pin=True, penwidth=0.5, ecolor='#000000' + opacity_string, vsize=0.1, vcmap=matplotlib.cm.hot, vcolor=color_property_map, output=output_folder + '/' + description + '.' + extension, size=(out_size[0], out_size[1]))
+            gt.graphviz_draw(g, fork=True, pos=pos_normalized, pin=True, penwidth=1, ecolor=edge_color, vsize=0.1, vcmap=matplotlib.cm.hot, vcolor=color_property_map, output=output_folder + '/' + description + '.' + extension, size=tuple(out_size))
 
 
 # Save a pickle file with the serialized graph, distance matrix, and layout.
