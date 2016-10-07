@@ -128,6 +128,61 @@ def load_chaco(file_name):
     print('\n[graph_io] Done!')
     return g
 
+def load_vna(in_file):
+    with open(in_file) as f:
+        all_lines = f.read().splitlines()
+
+        it = iter(all_lines)
+
+        # Ignore preamble
+        line = next(it)
+        while not line.startswith('*Node properties'):
+            line = next(it)
+        
+        node_properties = next(it).split(' ')
+        assert('ID' in node_properties)
+
+        vertices = dict()
+        line = next(it)
+        gt_idx = 0 # Index for gt
+        while not line.startswith('*Tie data'):
+            entries = line.split(' ')
+            vna_id = entries[0]
+            vertex = dict()
+            for i, prop in enumerate(node_properties):
+                vertex[prop] = entries[i]
+            vertex['ID'] = gt_idx # Replace VNA ID by numerical gt index
+            vertices[vna_id] = vertex # Retain VNA ID as key of the vertices dict
+            
+            gt_idx += 1
+            line = next(it)
+        print(vertices)
+
+        edge_properties = next(it).split(' ')
+        assert(edge_properties[0] == 'from' and edge_properties[1] == 'to')
+
+        edges = []
+        try:
+            while True:
+                line = next(it)
+                entries = line.split(' ')
+                v_i = vertices[entries[0]]['ID']
+                v_j = vertices[entries[1]]['ID']
+                edges.append((v_i, v_j))
+        except StopIteration:
+            print('Finished reading file. Making gt.Graph...')
+
+        g = gt.Graph(directed=False)
+        g.add_vertex(len(vertices))
+        for v_i, v_j in edges:
+            g.add_edge(v_i, v_j)
+
+        gt.remove_parallel_edges(g)
+
+        return g
+    return None
+
+
 
 def load_graph(file):
     if os.path.splitext(file)[1] == '.mtx':
@@ -136,6 +191,8 @@ def load_graph(file):
         g = load_csv(file)
     elif os.path.splitext(file)[1] == '.graph':
         g = load_chaco(file)
+    elif os.path.splitext(file)[1] == '.vna':
+        g = load_vna(file)
     else:
         # Give the file to graph_tool and hope for the best.
         g = gt.load_graph(file)

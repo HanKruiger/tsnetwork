@@ -100,8 +100,98 @@ def load_layout(in_file):
         f.close()
     return g, X, Y
 
+# Read from a file exported by Tulip. Coordinates are in the 'graphics' vertex property.
+def load_tulip_layout(in_file):
+    g = gt.load_graph(in_file)
+    g.set_directed(False)
+    gt.remove_parallel_edges(g)
 
-# Save a text file with the layout.
+    graphics = g.vertex_properties['graphics']
+    Y = np.zeros((g.num_vertices(), 2))
+    for i in range(g.num_vertices()):
+        Y[i, :] = [graphics[i]['x'], graphics[i]['y']]
+    return g, Y
+
+
+def load_vna_layout(in_file):
+    with open(in_file) as f:
+        all_lines = f.read().splitlines()
+
+        it = iter(all_lines)
+
+        # Ignore preamble
+        line = next(it)
+        while not line.startswith('*Node properties'):
+            line = next(it)
+        
+        node_properties = next(it).split(' ')
+        assert('ID' in node_properties and 'x' in node_properties and 'y' in node_properties)
+
+        vertices = dict()
+        line = next(it)
+        gt_idx = 0 # Index for gt
+        while not line.startswith('*Tie data'):
+            entries = line.split(' ')
+            vna_id = entries[0]
+            vertex = dict()
+            for i, prop in enumerate(node_properties):
+                vertex[prop] = entries[i]
+            vertex['ID'] = gt_idx # Replace VNA ID by numerical gt index
+            vertices[vna_id] = vertex # Retain VNA ID as key of the vertices dict
+            
+            gt_idx += 1
+            line = next(it)
+        print(vertices)
+
+        edge_properties = next(it).split(' ')
+        assert(edge_properties[0] == 'from' and edge_properties[1] == 'to')
+
+        edges = []
+        try:
+            while True:
+                line = next(it)
+                entries = line.split(' ')
+                v_i = vertices[entries[0]]['ID']
+                v_j = vertices[entries[1]]['ID']
+                edges.append((v_i, v_j))
+        except StopIteration:
+            print('Finished reading file. Making gt.Graph...')
+
+        g = gt.Graph(directed=False)
+        g.add_vertex(len(vertices))
+        for v_i, v_j in edges:
+            g.add_edge(v_i, v_j)
+
+        gt.remove_parallel_edges(g)
+
+        Y = np.zeros((g.num_vertices(), 2))
+        for v in vertices.keys():
+            Y[vertices[v]['ID'], 0] = float(vertices[v]['x'])
+            Y[vertices[v]['ID'], 1] = float(vertices[v]['y'])
+        print(Y.shape)
+        pos = g.new_vertex_property('vector<double>')
+        pos.set_2d_array(Y.T)
+
+        return g, Y
+    return None
+
+def save_vna_layout(out_file, g, Y):
+    with open(out_file, 'w') as f:
+        f.write('*Node properties\n')
+        f.write('ID x y\n')
+        for v in g.vertices():
+            x = Y[int(v), 0]
+            y = Y[int(v), 1]
+            f.write('{0} {1} {2}\n'.format(int(v), x, y))
+        f.write('*Tie data\n')
+        f.write('from to\n')
+        for v1, v2 in g.edges():
+            f.write('{0} {1}\n'.format(int(v1), int(v2)))
+        f.close()
+
+
+
+# Save a text file with the (edge-based) layout.
 def save_layout_txt(out_file, g, Y):
     edges = list(g.edges())
     vertices = list(g.vertices())
