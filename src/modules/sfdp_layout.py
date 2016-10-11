@@ -6,7 +6,7 @@ import modules.user_input as usr_input
 
 
 # Perform an SFDP placement on the graph, and save a drawing of the layout.
-def sfdp_placement(g, output_folder, color_property_map=None, ask_for_acceptance=True):
+def sfdp_placement(g, output_folder, color_property_map=None, ask_for_acceptance=True, opacity=1):
     pos_sfdp = None
     while True:
         print('[tsnetwork] Performing SFDP')
@@ -17,7 +17,7 @@ def sfdp_placement(g, output_folder, color_property_map=None, ask_for_acceptance
             pos_sfdp[v] = (float(pos[v][0]), float(pos[v][1]))
 
         print('[tsnetwork] Saving SFDP layout...')
-        layout_io.save_drawing(output_folder, g, pos=pos_sfdp, description='sfdp', color_property_map=color_property_map)
+        layout_io.save_drawing(output_folder, g, pos=pos_sfdp, description='sfdp', color_property_map=color_property_map, edge_colors="rgb", draw_vertices=False, opacity=opacity)
 
         if ask_for_acceptance:
             if usr_input.confirm('[tsnetwork] Is the generated sfdp layout ({0}) acceptable? [y/n]: '.format(output_folder + '/sfdp.pdf')):
