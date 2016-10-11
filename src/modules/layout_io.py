@@ -141,7 +141,6 @@ def load_vna_layout(in_file):
             
             gt_idx += 1
             line = next(it)
-        print(vertices)
 
         edge_properties = next(it).split(' ')
         assert(edge_properties[0] == 'from' and edge_properties[1] == 'to')
@@ -155,7 +154,7 @@ def load_vna_layout(in_file):
                 v_j = vertices[entries[1]]['ID']
                 edges.append((v_i, v_j))
         except StopIteration:
-            print('Finished reading file. Making gt.Graph...')
+            pass
 
         g = gt.Graph(directed=False)
         g.add_vertex(len(vertices))
@@ -168,7 +167,6 @@ def load_vna_layout(in_file):
         for v in vertices.keys():
             Y[vertices[v]['ID'], 0] = float(vertices[v]['x'])
             Y[vertices[v]['ID'], 1] = float(vertices[v]['y'])
-        print(Y.shape)
         pos = g.new_vertex_property('vector<double>')
         pos.set_2d_array(Y.T)
 

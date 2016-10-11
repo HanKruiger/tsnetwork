@@ -119,7 +119,8 @@ def cost_var(X, Y, sigma, Adj, l_kl, l_e, l_c, l_r, r_eps):
     compression = (1 / (2 * N)) * T.sum(Y**2, axis=1)
 
     # Repulsion term
-    repulsion = (1 / (2 * N**2)) * T.sum(T.fill_diagonal(1 / (euclidean_var(Y) + r_eps), 0), axis=1)
+    # repulsion = (1 / (2 * N**2)) * T.sum(T.fill_diagonal(1 / (euclidean_var(Y) + r_eps), 0), axis=1)
+    repulsion = -(1 / (2 * N**2)) * T.sum(T.fill_diagonal(T.log(euclidean_var(Y) + r_eps), 0), axis=1)
 
     cost = (l_kl / l_sum) * kl + (l_e / l_sum) * edge_contraction + (l_c / l_sum) * compression + (l_r / l_sum) * repulsion
 
@@ -375,8 +376,7 @@ def find_Y(X_shared, Y_shared, sigma_shared, N, output_dims, n_epochs,
             cs = get_costs()
 
             # Save a snapshot
-            save_drawing(output_folder, g, Y_shared.get_value().T, 'tsne_snap_' + str(epoch).zfill(5), color_array=cs,
-                         formats=['jpg'], verbose=False)
+            save_drawing(output_folder, g, Y_shared.get_value().T, 'tsne_snap_' + str(epoch).zfill(5), formats=['jpg'], verbose=False, edge_colors="rgb", draw_vertices=False, opacity=0.3)
 
     # Get per-vertex cost
     cs = get_costs()

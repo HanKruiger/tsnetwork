@@ -156,7 +156,6 @@ def load_vna(in_file):
             
             gt_idx += 1
             line = next(it)
-        print(vertices)
 
         edge_properties = next(it).split(' ')
         assert(edge_properties[0] == 'from' and edge_properties[1] == 'to')
@@ -170,7 +169,7 @@ def load_vna(in_file):
                 v_j = vertices[entries[1]]['ID']
                 edges.append((v_i, v_j))
         except StopIteration:
-            print('Finished reading file. Making gt.Graph...')
+            pass
 
         g = gt.Graph(directed=False)
         g.add_vertex(len(vertices))

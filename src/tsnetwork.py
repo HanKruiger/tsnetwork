@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--render_video', action='store_true', help='Render a video of the layout evolution. Needs ImageMagick and ffmpeg.')
     parser.add_argument('--retain_snaps', action='store_true', help='Retain the snapshots. This argument is ignored if no video is rendered.')
     parser.add_argument('--save_layout_data', action='store_true', help='Save all layout coordinates in a .pickle file and a .txt file.')
+    parser.add_argument('--opacity', type=float, default=0.3, help='Edge opacity.')
 
     # Manipulations to graph
     parser.add_argument('--strip_graph', action='store_true', help='Retain only the largest connected component in the graph.')
@@ -149,7 +150,7 @@ def main():
             if args.pre_sfdp or args.only_sfdp:
                 # Perform a SFDP layout (either as the only layout or as a
                 # starting point for t-SNE.)
-                Y_init, _ = sfdp_placement(gv, output_folder, ask_for_acceptance=not args.accept_all_sfdp)
+                Y_init, _ = sfdp_placement(gv, output_folder, ask_for_acceptance=not args.accept_all_sfdp, opacity=args.opacity)
                 if args.only_sfdp:
                     continue
             else:
@@ -280,13 +281,13 @@ def main():
                     print('[tsnetwork] Cleaning up snaps directory.')
                     shutil.rmtree(snaps_dir)
 
-                # Save the data (graph, distance matrix, vertex coordinates)
+                # Save the data (graph, vertex coordinates)
                 if args.save_layout_data:
-                    layout_io.save_layout(output_folder + '/layout_' + cfg.get_description() + '.pickle', gv, X_transfered, Y)
-                    layout_io.save_layout_txt(output_folder + '/edges_' + cfg.get_description() + '.txt', gv, Y)
+                    layout_io.save_vna_layout(output_folder + '/layout_' + cfg.get_description() + '.vna', gv, Y)
+                    layout_io.save_layout_txt(output_folder + '/layout_edges_' + cfg.get_description() + '.txt', gv, Y)
 
                 # Save final drawing of the layout
-                layout_io.save_drawing(output_folder, gv, Y.T, cfg.get_description(), color_array=costs)
+                layout_io.save_drawing(output_folder, gv, Y.T, cfg.get_description(), formats=['jpg', 'pdf'], edge_colors="rgb", draw_vertices=False, opacity=args.opacity)
 
     if there_were_exceptions:
         print('[tsnetwork] Done! However, be wary. There were exceptions.')
