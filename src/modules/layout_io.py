@@ -105,13 +105,21 @@ def load_tulip_layout(in_file):
     g = gt.load_graph(in_file)
     g.set_directed(False)
     gt.remove_parallel_edges(g)
-
     graphics = g.vertex_properties['graphics']
     Y = np.zeros((g.num_vertices(), 2))
     for i in range(g.num_vertices()):
         Y[i, :] = [graphics[i]['x'], graphics[i]['y']]
     return g, Y
 
+def normalize_layout(Y):
+    Y_cpy = Y.copy()
+    # Translate s.t. smallest values for both x and y are 0.
+    Y_cpy[:, 0] += -Y_cpy[:, 0].min()
+    Y_cpy[:, 1] += -Y_cpy[:, 1].min()
+    # Scale s.t. max(max(x, y)) = 1 (while keeping the same aspect ratio!)
+    scaling = 1 / (np.absolute(Y_cpy).max())
+    Y_cpy *= scaling
+    return Y_cpy
 
 def load_vna_layout(in_file):
     with open(in_file) as f:
@@ -199,3 +207,156 @@ def save_layout_txt(out_file, g, Y):
             v2 = int(e.target())
             f.write('{0}: {1} {2} {3} {4}\n'.format(i, Y[v1, 0], Y[v1, 1], Y[v2, 0], Y[v2, 1]))
         f.close()
+
+def load_ply_layout(file):
+    g = gt.Graph(directed=False)
+
+    with open(file) as f:
+        all_lines = f.read().splitlines()
+        it = iter(all_lines)
+        
+        line = next(it)
+        assert(line == 'ply')
+
+        line = next(it)
+        assert(line.startswith('format ascii'))
+
+        line = next(it)
+        while not line.startswith('element'):
+            line = next(it)
+
+        words = line.split(' ')
+        assert(words[0] == 'element')
+        assert(words[1] == 'vertex')
+        assert(words[2].isdigit())
+        n_vertices = int(words[2])
+        g.add_vertex(n_vertices)
+        assert(g.num_vertices() == n_vertices)
+
+        line = next(it)
+        v_props = OrderedDict()
+        while line.startswith('property'):
+            words = line.split(' ')
+            the_type = words[1]
+            if the_type == 'list':
+                name = words[4]
+                v_props[name] = dict()
+                count_type = words[2]
+                entry_type = words[3]
+                v_props[name]['count_type'] = count_type
+                v_props[name]['entry_type'] = entry_type
+            else:
+                name = words[2]
+                v_props[name] = dict()
+            v_props[name]['type'] = the_type
+            line = next(it)
+        print(v_props)
+
+        vps = dict()
+        for i, v_prop in enumerate(v_props):
+            name = list(v_props.keys())[i]
+            the_type = v_props[name]['type']
+            if the_type == 'float':
+                vp = g.new_vp(the_type)
+                vps[name] = vp
+            else:
+                raise NotImplementedError()
+
+        print(vps)
+        assert('x' in vps.keys())
+        assert('y' in vps.keys())
+        assert('z' in vps.keys())
+        
+        # Scan to next element
+        while not line.startswith('element'):
+            line = next(it)
+
+        words = line.split(' ')
+        assert(words[0] == 'element')
+        assert(words[1] == 'face')
+        assert(words[2].isdigit())
+        n_faces = int(words[2])
+        print(n_faces)
+
+        line = next(it)
+        f_props = OrderedDict()
+        while line.startswith('property'):
+            words = line.split(' ')
+            the_type = words[1]
+            if the_type == 'list':
+                name = words[4]
+                f_props[name] = dict()
+                count_type = words[2]
+                entry_type = words[3]
+                f_props[name]['count_type'] = count_type
+                f_props[name]['entry_type'] = entry_type
+            else:
+                name = words[2]
+                f_props[name] = dict()
+            f_props[name]['type'] = the_type
+            line = next(it)
+        print(f_props)
+
+        while not line.startswith('end_header'):
+            line = next(it)
+
+        for i in range(n_vertices):
+            line = next(it)
+            words = line.split(' ')
+            words = [word for word in words if word != '']
+            assert(len(words) == len(v_props.keys()))
+            for j, word in enumerate(words):
+                name = list(v_props.keys())[j]
+                the_type = v_props[name]['type']
+                if the_type == 'float':
+                    vps[name][i] = float(word)
+                else:
+                    raise NotImplementedError
+        
+        for _ in range (n_faces):
+            line = next(it)
+            words = line.split(' ')
+            words = [word for word in words if word != '']
+            i = 0
+            for name in f_props.keys():
+                the_type = f_props[name]['type']
+                if the_type == 'list':
+                    if f_props[name]['count_type'] == 'uchar':
+                        n_items = int(words[i])
+                    else:
+                        raise NotImplementedError
+                    the_list = [int(word) for word in words[i + 1:i + 1 + n_items]]
+                    i += 1 + n_items
+
+                    if name == 'vertex_indices':
+                        for j, idx1 in enumerate(the_list):
+                            idx2 = the_list[(j + 1) % len(the_list)]
+                            g.add_edge(idx1, idx2)
+            assert(i == len(words))
+
+
+    gt.remove_parallel_edges(g)
+
+    largest_connected_component = gt.label_largest_component(g)
+    unreferenced = sum([1 for i in largest_connected_component.a if i == 0])
+    if unreferenced > 0:
+        g.set_vertex_filter(largest_connected_component)
+        g.purge_vertices()
+        print('Filtered {0} unreferenced vertices.'.format(unreferenced))
+    
+    if 'x' in vps.keys() and 'y' in vps.keys():
+        if 'z' in vps.keys():
+            Y = np.zeros((n_vertices, 3))
+            for v in g.vertices():
+                print(type(v))
+                Y[v, 0] = vps['x'][v]
+                Y[v, 1] = vps['y'][v]
+                Y[v, 2] = vps['z'][v]
+        else:
+            Y = np.zeros((n_vertices, 2))
+            for v in g.vertices():
+                Y[v, 0] = vps['x'][v]
+                Y[v, 1] = vps['y'][v]
+
+
+    return g, Y
