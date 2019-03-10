@@ -1,3 +1,6 @@
+# If you plan to use/evaluate tsnetwork, please use the code on https://github.com/HanKruiger/tsNET which is (just a little bit) less experimental.
+This repository is still here because my [MSc thesis](http://fse.studenttheses.ub.rug.nl/id/eprint/14540) referred to it.
+
 # `tsnetwork`
 
 Graph layouts by t-distributed stochastic neighbour embedding.
